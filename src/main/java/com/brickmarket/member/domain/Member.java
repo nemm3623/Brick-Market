@@ -1,5 +1,7 @@
 package com.brickmarket.member.domain;
 
+import com.brickmarket.common.exception.BusinessException;
+import com.brickmarket.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -46,15 +48,31 @@ public class Member {
     }
 
     private Member(OAuthProvider provider, String providerId, String nickname) {
-        this.provider = provider;
-        this.providerId = providerId;
-        this.nickname = nickname;
+        this.provider = validateProvider(provider);
+        this.providerId = validateText(providerId);
+        this.nickname = validateText(nickname);
         this.role = MemberRole.USER;
         this.status = MemberStatus.ACTIVE;
     }
 
     public static Member oauth(OAuthProvider provider, String providerId, String nickname) {
         return new Member(provider, providerId, nickname);
+    }
+
+    private static OAuthProvider validateProvider(OAuthProvider provider) {
+        if (provider == null) {
+            throw new BusinessException(ErrorCode.INVALID_MEMBER_OAUTH_INFO);
+        }
+
+        return provider;
+    }
+
+    private static String validateText(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_MEMBER_OAUTH_INFO);
+        }
+
+        return value;
     }
 
     public Long getId() {

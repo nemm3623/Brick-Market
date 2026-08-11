@@ -6,17 +6,23 @@ import com.brickmarket.member.domain.MemberStatus;
 import com.brickmarket.member.domain.OAuthProvider;
 import com.brickmarket.member.repository.MemberRepository;
 import com.brickmarket.member.service.MemberService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ActiveProfiles("test")
-@DataJpaTest
-@Import(MemberService.class)
+@SpringBootTest
 class MemberServiceTest {
 
     @Autowired
@@ -24,6 +30,11 @@ class MemberServiceTest {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @AfterEach
+    void tearDown() {
+        memberRepository.deleteAll();
+    }
 
     @Test
     void createsMemberWhenOAuthIdentityDoesNotExist() {
@@ -45,5 +56,38 @@ class MemberServiceTest {
         assertThat(second.getId()).isEqualTo(first.getId());
         assertThat(second.getNickname()).isEqualTo("첫닉네임");
         assertThat(memberRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void returnsSameMemberWhenOAuthRequestsArriveConcurrently() throws Exception {
+        int requestCount = 8;
+        ExecutorService executorService = Executors.newFixedThreadPool(requestCount);
+        CountDownLatch ready = new CountDownLatch(requestCount);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Member>> futures = new ArrayList<>();
+
+        try {
+            for (int i = 0; i < requestCount; i++) {
+                futures.add(executorService.submit(() -> {
+                    ready.countDown();
+                    start.await();
+                    return memberService.findOrCreate(OAuthProvider.KAKAO, "concurrent-12345", "동시로그인");
+                }));
+            }
+
+            assertThat(ready.await(3, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            List<Member> members = new ArrayList<>();
+            for (Future<Member> future : futures) {
+                members.add(future.get(3, TimeUnit.SECONDS));
+            }
+
+            Long memberId = members.get(0).getId();
+            assertThat(members).extracting(Member::getId).containsOnly(memberId);
+            assertThat(memberRepository.count()).isEqualTo(1);
+        } finally {
+            executorService.shutdownNow();
+        }
     }
 }
