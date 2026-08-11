@@ -27,6 +27,9 @@ import lombok.NoArgsConstructor;
 )
 public class Member {
 
+    private static final int MAX_PROVIDER_ID_LENGTH = 100;
+    private static final int MAX_NICKNAME_LENGTH = 40;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -51,8 +54,8 @@ public class Member {
 
     private Member(OAuthProvider provider, String providerId, String nickname) {
         this.provider = validateProvider(provider);
-        this.providerId = validateText(providerId);
-        this.nickname = validateText(nickname);
+        this.providerId = validateText(providerId, MAX_PROVIDER_ID_LENGTH);
+        this.nickname = validateText(nickname, MAX_NICKNAME_LENGTH);
         this.role = MemberRole.USER;
         this.status = MemberStatus.ACTIVE;
     }
@@ -69,8 +72,8 @@ public class Member {
         return provider;
     }
 
-    private static String validateText(String value) {
-        if (value == null || value.isBlank()) {
+    private static String validateText(String value, int maxLength) {
+        if (value == null || value.isBlank() || value.length() > maxLength) {
             throw new BusinessException(ErrorCode.INVALID_MEMBER_OAUTH_INFO);
         }
 

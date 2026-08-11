@@ -27,8 +27,24 @@ class MemberTest {
     }
 
     @Test
+    void rejectsTooLongProviderId() {
+        assertThatThrownBy(() -> Member.oauth(OAuthProvider.KAKAO, "1".repeat(101), "레고수집가"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_MEMBER_OAUTH_INFO);
+    }
+
+    @Test
     void rejectsBlankNickname() {
         assertThatThrownBy(() -> Member.oauth(OAuthProvider.KAKAO, "12345", " "))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_MEMBER_OAUTH_INFO);
+    }
+
+    @Test
+    void rejectsTooLongNickname() {
+        assertThatThrownBy(() -> Member.oauth(OAuthProvider.KAKAO, "12345", "가".repeat(41)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_MEMBER_OAUTH_INFO);
