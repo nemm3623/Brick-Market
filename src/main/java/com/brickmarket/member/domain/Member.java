@@ -11,8 +11,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Getter
 @Entity
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         name = "members",
         uniqueConstraints = @UniqueConstraint(
@@ -44,9 +49,6 @@ public class Member {
     @Column(nullable = false, length = 20)
     private MemberStatus status;
 
-    protected Member() {
-    }
-
     private Member(OAuthProvider provider, String providerId, String nickname) {
         this.provider = validateProvider(provider);
         this.providerId = validateText(providerId);
@@ -73,29 +75,5 @@ public class Member {
         }
 
         return value;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public OAuthProvider getProvider() {
-        return provider;
-    }
-
-    public String getProviderId() {
-        return providerId;
-    }
-
-    public String getNickname() {
-        return nickname;
-    }
-
-    public MemberRole getRole() {
-        return role;
-    }
-
-    public MemberStatus getStatus() {
-        return status;
     }
 }
