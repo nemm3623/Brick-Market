@@ -8,6 +8,8 @@ CREATE TABLE products (
     price BIGINT NOT NULL,
     CONSTRAINT pk_products PRIMARY KEY (id),
     CONSTRAINT fk_products_seller FOREIGN KEY (seller_id) REFERENCES members (id),
+    CONSTRAINT ck_products_type CHECK (type IN ('USED', 'UNOPENED')),
+    CONSTRAINT ck_products_status CHECK (status IN ('ON_SALE', 'RESERVED', 'SOLD')),
     CONSTRAINT ck_products_price_positive CHECK (price > 0)
 );
 
