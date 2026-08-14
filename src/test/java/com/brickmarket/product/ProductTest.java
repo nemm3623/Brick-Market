@@ -69,10 +69,12 @@ class ProductTest {
     }
 
     @Test
-    void rejectsZeroPrice() {
+    void rejectsInvalidPrice() {
         Member seller = Member.oauth(OAuthProvider.KAKAO, "seller-12345", "판매자");
 
         assertInvalidProduct(() -> Product.register(seller, ProductType.USED, "중고 레고 성", "상태 좋은 중고 레고입니다.", 0L));
+        assertInvalidProduct(() -> Product.register(seller, ProductType.USED, "중고 레고 성", "상태 좋은 중고 레고입니다.", -1L));
+        assertInvalidProduct(() -> Product.register(seller, ProductType.USED, "중고 레고 성", "상태 좋은 중고 레고입니다.", null));
     }
 
     private void assertInvalidProduct(Runnable action) {
