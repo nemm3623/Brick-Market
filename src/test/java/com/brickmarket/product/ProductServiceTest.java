@@ -98,10 +98,43 @@ class ProductServiceTest {
     }
 
     @Test
+    void rejectsNullSellerId() {
+        ProductRegisterCommand command = new ProductRegisterCommand(
+                ProductType.USED,
+                "중고 레고 성",
+                "상태 좋은 중고 레고입니다.",
+                50000L
+        );
+
+        assertThatThrownBy(() -> productService.register(null, command))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
+    }
+
+    @Test
+    void rejectsNullRegisterCommand() {
+        Member seller = memberRepository.save(Member.oauth(OAuthProvider.KAKAO, "seller-12345", "판매자"));
+
+        assertThatThrownBy(() -> productService.register(seller.getId(), null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
+    }
+
+    @Test
     void rejectsUnknownProduct() {
         assertThatThrownBy(() -> productService.getProduct(999L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+    }
+
+    @Test
+    void rejectsNullProductId() {
+        assertThatThrownBy(() -> productService.getProduct(null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
     }
 }

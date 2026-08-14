@@ -20,6 +20,9 @@ public class ProductService {
 
     @Transactional
     public Product register(Long sellerId, ProductRegisterCommand command) {
+        validateProductInput(sellerId);
+        validateProductInput(command);
+
         Member seller = memberRepository.findById(sellerId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
@@ -33,7 +36,15 @@ public class ProductService {
     }
 
     public Product getProduct(Long productId) {
+        validateProductInput(productId);
+
         return productRepository.findById(productId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+    }
+
+    private void validateProductInput(Object value) {
+        if (value == null) {
+            throw new BusinessException(ErrorCode.INVALID_PRODUCT_INFO);
+        }
     }
 }
