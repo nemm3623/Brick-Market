@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -50,6 +51,22 @@ class MemberControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void returnsForbiddenWhenCsrfTokenIsMissing() throws Exception {
+        LoginMember loginMember = new LoginMember(
+                1L,
+                MemberRole.USER,
+                Map.of("id", 12345L),
+                Set.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        mockMvc.perform(post("/api/members/me")
+                        .with(oauth2Login().oauth2User(loginMember)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("FORBIDDEN"));
     }
 
     @Test
