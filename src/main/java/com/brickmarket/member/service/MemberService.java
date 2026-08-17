@@ -23,6 +23,15 @@ public class MemberService {
                 .orElseGet(() -> createOrFindExisting(provider, providerId, nickname));
     }
 
+    public Member findById(Long memberId) {
+        if (memberId == null) {
+            throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
+        }
+
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
     private Member createOrFindExisting(OAuthProvider provider, String providerId, String nickname) {
         try {
             return memberRegistrationService.create(provider, providerId, nickname);
