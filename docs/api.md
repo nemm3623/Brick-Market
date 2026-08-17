@@ -19,7 +19,20 @@
 | `ErrorCode` | 구현 | HTTP 상태와 메시지 관리 |
 | `GlobalExceptionHandler` | 구현 | `BusinessException` 처리 구현 |
 | Bean Validation 오류 처리 | 계획 | `INVALID_REQUEST` 응답 추가 필요 |
-| 인증·인가 오류 처리 | 계획 | Spring Security 인증 구현 시 추가 |
+| 인증·인가 오류 처리 | 구현 | 미인증 401, 권한 부족 403 공통 응답 |
+
+# Auth API
+
+| Method | Path | 인증 | 상태 | 비고 |
+|---|---|---|---|---|
+| `GET` | `/oauth2/authorization/kakao` | 불필요 | 구현 | 카카오 로그인 시작 |
+| `GET` | `/login/oauth2/code/kakao` | 불필요 | 구현 | Spring Security OAuth 콜백 |
+
+# Member API
+
+| Method | Path | 인증 | 상태 | 비고 |
+|---|---|---|---|---|
+| `GET` | `/api/members/me` | 필요 | 구현 | 현재 로그인 회원 조회, providerId 미노출 |
 
 # Product API
 
