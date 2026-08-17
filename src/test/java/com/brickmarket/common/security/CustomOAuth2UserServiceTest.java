@@ -1,11 +1,14 @@
 package com.brickmarket.common.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.brickmarket.common.exception.BusinessException;
+import com.brickmarket.common.exception.ErrorCode;
 import com.brickmarket.member.domain.Member;
 import com.brickmarket.member.domain.MemberRole;
 import com.brickmarket.member.domain.MemberStatus;
@@ -93,6 +96,68 @@ class CustomOAuth2UserServiceTest {
                 .hasMessageContaining("로그인할 수 없는 회원 상태입니다");
     }
 
+    @Test
+    void rejectsWithdrawnMemberWithLoginNotAllowedError() {
+        OAuth2UserRequest request = kakaoUserRequest();
+        OAuth2User oauthUser = new DefaultOAuth2User(
+                Set.of(new SimpleGrantedAuthority("OAUTH2_USER")),
+                kakaoAttributes(),
+                "id"
+        );
+        Member member = mock(Member.class);
+
+        when(delegate.loadUser(request)).thenReturn(oauthUser);
+        when(memberService.findOrCreate(OAuthProvider.KAKAO, "12345", "레고수집가"))
+                .thenReturn(member);
+        when(member.getStatus()).thenReturn(MemberStatus.WITHDRAWN);
+
+        assertThatExceptionOfType(OAuth2AuthenticationException.class)
+                .isThrownBy(() -> customOAuth2UserService.loadUser(request))
+                .satisfies(exception -> {
+                    assertThat(exception.getError().getErrorCode())
+                            .isEqualTo(ErrorCode.MEMBER_LOGIN_NOT_ALLOWED.name());
+                    assertThat(exception.getMessage())
+                            .isEqualTo(ErrorCode.MEMBER_LOGIN_NOT_ALLOWED.getMessage());
+                });
+    }
+
+    @Test
+    void rejectsNonKakaoProvider() {
+        OAuth2UserRequest request = oauthUserRequest("naver");
+
+        assertThatExceptionOfType(OAuth2AuthenticationException.class)
+                .isThrownBy(() -> customOAuth2UserService.loadUser(request))
+                .satisfies(exception -> {
+                    assertThat(exception.getError().getErrorCode())
+                            .isEqualTo("UNSUPPORTED_OAUTH_PROVIDER");
+                    assertThat(exception.getMessage())
+                            .isEqualTo("지원하지 않는 OAuth 제공자입니다.");
+                });
+    }
+
+    @Test
+    void convertsMemberServiceBusinessExceptionToOAuth2AuthenticationException() {
+        OAuth2UserRequest request = kakaoUserRequest();
+        OAuth2User oauthUser = new DefaultOAuth2User(
+                Set.of(new SimpleGrantedAuthority("OAUTH2_USER")),
+                kakaoAttributes(),
+                "id"
+        );
+
+        when(delegate.loadUser(request)).thenReturn(oauthUser);
+        when(memberService.findOrCreate(OAuthProvider.KAKAO, "12345", "레고수집가"))
+                .thenThrow(new BusinessException(ErrorCode.MEMBER_OAUTH_CONFLICT));
+
+        assertThatExceptionOfType(OAuth2AuthenticationException.class)
+                .isThrownBy(() -> customOAuth2UserService.loadUser(request))
+                .satisfies(exception -> {
+                    assertThat(exception.getError().getErrorCode())
+                            .isEqualTo(ErrorCode.MEMBER_OAUTH_CONFLICT.name());
+                    assertThat(exception.getMessage())
+                            .isEqualTo(ErrorCode.MEMBER_OAUTH_CONFLICT.getMessage());
+                });
+    }
+
     private static Map<String, Object> kakaoAttributes() {
         return Map.of(
                 "id", 12345L,
@@ -103,7 +168,11 @@ class CustomOAuth2UserServiceTest {
     }
 
     private static OAuth2UserRequest kakaoUserRequest() {
-        ClientRegistration registration = ClientRegistration.withRegistrationId("kakao")
+        return oauthUserRequest("kakao");
+    }
+
+    private static OAuth2UserRequest oauthUserRequest(String registrationId) {
+        ClientRegistration registration = ClientRegistration.withRegistrationId(registrationId)
                 .clientId("test-client-id")
                 .clientSecret("test-client-secret")
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
