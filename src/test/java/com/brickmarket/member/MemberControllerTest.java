@@ -54,6 +54,14 @@ class MemberControllerTest {
     }
 
     @Test
+    void returnsUnauthorizedForUnconfiguredApiRequest() throws Exception {
+        mockMvc.perform(get("/api/unconfigured"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+    }
+
+    @Test
     void returnsForbiddenWhenCsrfTokenIsMissing() throws Exception {
         LoginMember loginMember = new LoginMember(
                 1L,
