@@ -1,5 +1,7 @@
 package com.brickmarket.member;
 
+import com.brickmarket.common.exception.BusinessException;
+import com.brickmarket.common.exception.ErrorCode;
 import com.brickmarket.member.domain.Member;
 import com.brickmarket.member.domain.MemberRole;
 import com.brickmarket.member.domain.MemberStatus;
@@ -20,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ActiveProfiles("test")
 @SpringBootTest
@@ -46,6 +49,31 @@ class MemberServiceTest {
         assertThat(member.getNickname()).isEqualTo("레고수집가");
         assertThat(member.getRole()).isEqualTo(MemberRole.USER);
         assertThat(member.getStatus()).isEqualTo(MemberStatus.ACTIVE);
+    }
+
+    @Test
+    void findsMemberById() {
+        Member saved = memberService.findOrCreate(OAuthProvider.KAKAO, "12345", "레고수집가");
+
+        Member found = memberService.findById(saved.getId());
+
+        assertThat(found.getId()).isEqualTo(saved.getId());
+    }
+
+    @Test
+    void rejectsMissingMemberId() {
+        assertThatThrownBy(() -> memberService.findById(999L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    void rejectsNullMemberId() {
+        assertThatThrownBy(() -> memberService.findById(null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
     }
 
     @Test
