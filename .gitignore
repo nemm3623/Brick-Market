@@ -6,6 +6,7 @@ mockup/
 .gradle-cache/
 build/
 out/
+.env
 
 *.iml
 .idea/
