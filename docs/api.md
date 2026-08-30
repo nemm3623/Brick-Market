@@ -18,7 +18,7 @@
 | `BusinessException` | 구현 | 비즈니스 예외 |
 | `ErrorCode` | 구현 | HTTP 상태와 메시지 관리 |
 | `GlobalExceptionHandler` | 구현 | `BusinessException` 처리 구현 |
-| Bean Validation 오류 처리 | 계획 | `INVALID_REQUEST` 응답 추가 필요 |
+| Bean Validation 오류 처리 | 구현 | `INVALID_REQUEST` 공통 응답 |
 | 인증·인가 오류 처리 | 구현 | 미인증 401, 권한 부족 403 공통 응답 |
 
 # Auth API
@@ -38,7 +38,7 @@
 
 | Method | Path | 인증 | 상태 | 비고 |
 |---|---|---|---|---|
-| `POST` | `/api/products` | 필요 | 진행 중 | Product 등록 Domain·Service 구현, Controller 필요 |
+| `POST` | `/api/products` | 필요 | 구현 | 로그인 회원을 판매자로 등록, 요청값 검증 적용 |
 | `GET` | `/api/products/{productId}` | 선택 | 진행 중 | Product 단건 조회 Service 구현, Controller 필요 |
 | `GET` | `/api/products` | 선택 | 계획 | 목록, 검색, 정렬과 페이지네이션 정책 필요 |
 | `PATCH` | `/api/products/{productId}` | 필요 | 계획 | 판매자 소유권 검증 필요 |
