@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -140,6 +141,45 @@ class ProductControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorCode").value("MEMBER_NOT_FOUND"));
+    }
+
+    @Test
+    void returnsProductWithoutLogin() throws Exception {
+        Member seller = mock(Member.class);
+        Product product = mock(Product.class);
+        when(productService.getProduct(10L)).thenReturn(product);
+        when(product.getId()).thenReturn(10L);
+        when(product.getSeller()).thenReturn(seller);
+        when(seller.getId()).thenReturn(1L);
+        when(product.getType()).thenReturn(ProductType.UNOPENED);
+        when(product.getStatus()).thenReturn(ProductStatus.ON_SALE);
+        when(product.getTitle()).thenReturn("미개봉 레고 우주선");
+        when(product.getDescription()).thenReturn("박스 손상 없는 미개봉 제품입니다.");
+        when(product.getPrice()).thenReturn(120000L);
+
+        mockMvc.perform(get("/api/products/{productId}", 10L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(10))
+                .andExpect(jsonPath("$.data.sellerId").value(1))
+                .andExpect(jsonPath("$.data.type").value("UNOPENED"))
+                .andExpect(jsonPath("$.data.status").value("ON_SALE"))
+                .andExpect(jsonPath("$.data.title").value("미개봉 레고 우주선"))
+                .andExpect(jsonPath("$.data.description").value("박스 손상 없는 미개봉 제품입니다."))
+                .andExpect(jsonPath("$.data.price").value(120000));
+
+        verify(productService).getProduct(10L);
+    }
+
+    @Test
+    void returnsNotFoundWhenProductDoesNotExist() throws Exception {
+        when(productService.getProduct(999L))
+                .thenThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        mockMvc.perform(get("/api/products/{productId}", 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("PRODUCT_NOT_FOUND"));
     }
 
     private LoginMember loginMember(Long memberId) {
