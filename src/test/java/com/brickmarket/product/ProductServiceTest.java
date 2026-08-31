@@ -58,6 +58,8 @@ class ProductServiceTest {
         assertThat(product.getTitle()).isEqualTo("중고 레고 성");
         assertThat(product.getDescription()).isEqualTo("상태 좋은 중고 레고입니다.");
         assertThat(product.getPrice()).isEqualTo(50000L);
+        assertThat(product.getCreatedAt()).isNotNull();
+        assertThat(product.getUpdatedAt()).isNotNull();
         assertThat(productRepository.count()).isEqualTo(1);
     }
 

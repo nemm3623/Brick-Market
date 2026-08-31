@@ -49,6 +49,8 @@ class MemberServiceTest {
         assertThat(member.getNickname()).isEqualTo("레고수집가");
         assertThat(member.getRole()).isEqualTo(MemberRole.USER);
         assertThat(member.getStatus()).isEqualTo(MemberStatus.ACTIVE);
+        assertThat(member.getCreatedAt()).isNotNull();
+        assertThat(member.getUpdatedAt()).isNotNull();
     }
 
     @Test
