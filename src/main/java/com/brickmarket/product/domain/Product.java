@@ -2,6 +2,7 @@ package com.brickmarket.product.domain;
 
 import com.brickmarket.common.exception.BusinessException;
 import com.brickmarket.common.exception.ErrorCode;
+import com.brickmarket.common.domain.BaseTimeEntity;
 import com.brickmarket.member.domain.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "products")
-public class Product {
+public class Product extends BaseTimeEntity {
 
     private static final int MAX_TITLE_LENGTH = 100;
     private static final int MAX_DESCRIPTION_LENGTH = 1000;

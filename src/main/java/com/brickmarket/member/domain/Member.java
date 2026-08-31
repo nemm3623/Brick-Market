@@ -2,6 +2,7 @@ package com.brickmarket.member.domain;
 
 import com.brickmarket.common.exception.BusinessException;
 import com.brickmarket.common.exception.ErrorCode;
+import com.brickmarket.common.domain.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,7 +26,7 @@ import lombok.NoArgsConstructor;
                 columnNames = {"provider", "provider_id"}
         )
 )
-public class Member {
+public class Member extends BaseTimeEntity {
 
     private static final int MAX_PROVIDER_ID_LENGTH = 100;
     private static final int MAX_NICKNAME_LENGTH = 40;
