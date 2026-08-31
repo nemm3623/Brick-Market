@@ -71,17 +71,17 @@ com.brickmarket
 
 - 요청 DTO와 응답 DTO를 분리한다.
 - JPA Entity를 API 요청이나 응답으로 직접 사용하지 않는다.
-- HTTP 요청 DTO를 Domain이나 Repository까지 전달하지 않는다.
+- HTTP 요청 DTO를 Service, Domain 또는 Repository까지 전달하지 않는다.
 - Service 입력 항목이 많거나 의미 있는 입력 묶음이 필요하면 Command 객체를 사용한다.
-- Command는 `@RequestBody`, `@RequestParam`, `HttpServletRequest` 같은 HTTP 전용 annotation이나 객체를 포함하지 않는다.
+- Command는 HTTP 전용 annotation이나 객체를 포함하지 않는다.
 
 # 검증 책임
 
 - Controller/DTO: null, blank, 길이, 범위, 형식 같은 요청 형식 검증
 - Service: 리소스 존재 여부, 권한, 소유권, 중복, 상태 전이 검증
 - Domain: 필수 연관관계, 가격, 초기 상태처럼 객체 자체가 책임져야 하는 불변식 검증
-- 공개 Service 메서드는 Controller 외부에서도 호출될 수 있다고 보고, 필수 인자가 `null`이면 Repository 호출 전에 프로젝트의 비즈니스 예외로 변환한다.
-- Controller의 Bean Validation이 Domain 불변식 검증을 대신하지 않는다.
+- Service 공개 메서드는 여러 진입점에서 호출될 수 있으므로, 필수 인자의 null 값을 Repository 호출 전에 비즈니스 예외로 처리한다.
+- Bean Validation은 Domain 불변식 검증을 대신하지 않는다.
 
 # Entity 작성 규칙
 
