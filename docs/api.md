@@ -39,7 +39,7 @@
 | Method | Path | 인증 | 상태 | 비고 |
 |---|---|---|---|---|
 | `POST` | `/api/products` | 필요 | 구현 | 로그인 회원을 판매자로 등록, 요청값 검증 적용 |
-| `GET` | `/api/products/{productId}` | 선택 | 진행 중 | Product 단건 조회 Service 구현, Controller 필요 |
+| `GET` | `/api/products/{productId}` | 불필요 | 구현 | 비로그인 사용자도 상품 상세 조회 가능 |
 | `GET` | `/api/products` | 선택 | 계획 | 목록, 검색, 정렬과 페이지네이션 정책 필요 |
 | `PATCH` | `/api/products/{productId}` | 필요 | 계획 | 판매자 소유권 검증 필요 |
 | `PATCH` | `/api/products/{productId}/status` | 필요 | 계획 | 허용된 상태 전이 정책 필요 |

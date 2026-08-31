@@ -7,6 +7,7 @@ import com.brickmarket.common.security.CustomOAuth2UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -28,6 +29,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/oauth2/**", "/login/**", "/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products/{productId}").permitAll()
                         .requestMatchers("/api/members/me").authenticated()
                         .anyRequest().authenticated()
                 )
