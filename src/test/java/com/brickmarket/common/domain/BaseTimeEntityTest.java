@@ -36,15 +36,19 @@ class BaseTimeEntityTest {
     void keepsCreatedAtAndChangesUpdatedAtWhenEntityIsUpdated() throws InterruptedException {
         AuditTestEntity entity = new AuditTestEntity("최초 이름");
         entityManager.persistAndFlush(entity);
-        Instant createdAt = entity.getCreatedAt();
-        Instant updatedAt = entity.getUpdatedAt();
+        Long entityId = entity.getId();
+        entityManager.clear();
+
+        AuditTestEntity saved = entityManager.find(AuditTestEntity.class, entityId);
+        Instant createdAt = saved.getCreatedAt();
+        Instant updatedAt = saved.getUpdatedAt();
 
         Thread.sleep(10);
-        entity.changeName("변경 이름");
+        saved.changeName("변경 이름");
         entityManager.flush();
         entityManager.clear();
 
-        AuditTestEntity updated = entityManager.find(AuditTestEntity.class, entity.getId());
+        AuditTestEntity updated = entityManager.find(AuditTestEntity.class, entityId);
 
         assertThat(updated.getCreatedAt()).isEqualTo(createdAt);
         assertThat(updated.getUpdatedAt()).isAfter(updatedAt);
