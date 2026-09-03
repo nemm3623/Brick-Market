@@ -12,13 +12,18 @@ import com.brickmarket.product.domain.Product;
 import com.brickmarket.product.domain.ProductStatus;
 import com.brickmarket.product.domain.ProductType;
 import com.brickmarket.product.service.ProductRegisterCommand;
+import com.brickmarket.product.service.ProductSearchCondition;
 import com.brickmarket.product.service.ProductService;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -182,6 +187,75 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.errorCode").value("PRODUCT_NOT_FOUND"));
     }
 
+    @Test
+    void returnsProductPageWithoutLogin() throws Exception {
+        Product product = product(10L, ProductType.USED, "중고 레고 성", 50000L);
+        ProductSearchCondition condition = new ProductSearchCondition(ProductType.USED, "레고", 0, 20);
+        when(productService.getProducts(condition)).thenReturn(new PageImpl<>(
+                List.of(product),
+                PageRequest.of(0, 20),
+                1
+        ));
+
+        mockMvc.perform(get("/api/products")
+                        .param("type", "USED")
+                        .param("keyword", "레고")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].id").value(10))
+                .andExpect(jsonPath("$.data.content[0].sellerId").value(1))
+                .andExpect(jsonPath("$.data.content[0].type").value("USED"))
+                .andExpect(jsonPath("$.data.content[0].status").value("ON_SALE"))
+                .andExpect(jsonPath("$.data.content[0].title").value("중고 레고 성"))
+                .andExpect(jsonPath("$.data.content[0].price").value(50000))
+                .andExpect(jsonPath("$.data.content[0].createdAt").value("2026-09-03T10:00:00Z"))
+                .andExpect(jsonPath("$.data.content[0].description").doesNotExist())
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.totalPages").value(1))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+
+        verify(productService).getProducts(condition);
+    }
+
+    @Test
+    void usesDefaultProductPageParameters() throws Exception {
+        ProductSearchCondition condition = new ProductSearchCondition(null, null, 0, 20);
+        when(productService.getProducts(condition)).thenReturn(new PageImpl<>(
+                List.of(),
+                PageRequest.of(0, 20),
+                0
+        ));
+
+        mockMvc.perform(get("/api/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content").isEmpty())
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+
+        verify(productService).getProducts(condition);
+    }
+
+    @Test
+    void rejectsInvalidProductPageSize() throws Exception {
+        mockMvc.perform(get("/api/products").param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void rejectsInvalidProductType() throws Exception {
+        mockMvc.perform(get("/api/products").param("type", "INVALID"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_REQUEST"));
+    }
+
     private LoginMember loginMember(Long memberId) {
         return new LoginMember(
                 memberId,
@@ -189,5 +263,19 @@ class ProductControllerTest {
                 Map.of("id", 12345L),
                 Set.of(new SimpleGrantedAuthority("ROLE_USER"))
         );
+    }
+
+    private Product product(Long id, ProductType type, String title, Long price) {
+        Member seller = mock(Member.class);
+        Product product = mock(Product.class);
+        when(product.getId()).thenReturn(id);
+        when(product.getSeller()).thenReturn(seller);
+        when(seller.getId()).thenReturn(1L);
+        when(product.getType()).thenReturn(type);
+        when(product.getStatus()).thenReturn(ProductStatus.ON_SALE);
+        when(product.getTitle()).thenReturn(title);
+        when(product.getPrice()).thenReturn(price);
+        when(product.getCreatedAt()).thenReturn(Instant.parse("2026-09-03T10:00:00Z"));
+        return product;
     }
 }
