@@ -10,11 +10,18 @@ import com.brickmarket.product.domain.ProductStatus;
 import com.brickmarket.product.domain.ProductType;
 import com.brickmarket.product.repository.ProductRepository;
 import com.brickmarket.product.service.ProductRegisterCommand;
+import com.brickmarket.product.service.ProductSearchCondition;
 import com.brickmarket.product.service.ProductService;
+import java.time.OffsetDateTime;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +39,9 @@ class ProductServiceTest {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @AfterEach
     void tearDown() {
@@ -82,6 +92,79 @@ class ProductServiceTest {
         assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
         assertThat(product.getTitle()).isEqualTo("미개봉 레고 우주선");
         assertThat(product.getPrice()).isEqualTo(120000L);
+    }
+
+    @Test
+    void getsOnlyOnSaleProductsNewestFirst() {
+        Member seller = saveSeller();
+        Product older = saveProduct(seller, ProductType.USED, "오래된 상품");
+        Product newer = saveProduct(seller, ProductType.UNOPENED, "최신 상품");
+        Product sold = saveProduct(seller, ProductType.USED, "판매 완료 상품");
+        setCreatedAt(older, "2026-09-01T10:00:00Z");
+        setCreatedAt(newer, "2026-09-02T10:00:00Z");
+        setCreatedAt(sold, "2026-09-03T10:00:00Z");
+        jdbcTemplate.update("UPDATE products SET status = 'SOLD' WHERE id = ?", sold.getId());
+
+        Page<Product> products = productService.getProducts(
+                new ProductSearchCondition(null, null, 0, 20)
+        );
+
+        assertThat(products.getContent())
+                .extracting(Product::getId)
+                .containsExactly(newer.getId(), older.getId());
+    }
+
+    @Test
+    void filtersProductsByTypeAndTitleKeyword() {
+        Member seller = saveSeller();
+        Product expected = saveProduct(seller, ProductType.USED, "중고 레고 성");
+        saveProduct(seller, ProductType.USED, "중고 레고 자동차");
+        saveProduct(seller, ProductType.UNOPENED, "미개봉 레고 성");
+
+        Page<Product> products = productService.getProducts(
+                new ProductSearchCondition(ProductType.USED, "레고 성", 0, 20)
+        );
+
+        assertThat(products.getContent())
+                .extracting(Product::getId)
+                .containsExactly(expected.getId());
+    }
+
+    @Test
+    void treatsLikeWildcardAsLiteralKeyword() {
+        Member seller = saveSeller();
+        Product expected = saveProduct(seller, ProductType.USED, "100% 정품 레고");
+        saveProduct(seller, ProductType.USED, "1000 정품 레고");
+
+        Page<Product> products = productService.getProducts(
+                new ProductSearchCondition(null, "%", 0, 20)
+        );
+
+        assertThat(products.getContent())
+                .extracting(Product::getId)
+                .containsExactly(expected.getId());
+    }
+
+    @Test
+    void paginatesProducts() {
+        Member seller = saveSeller();
+        Product oldest = saveProduct(seller, ProductType.USED, "첫 번째 상품");
+        Product middle = saveProduct(seller, ProductType.USED, "두 번째 상품");
+        Product newest = saveProduct(seller, ProductType.USED, "세 번째 상품");
+        setCreatedAt(oldest, "2026-09-01T10:00:00Z");
+        setCreatedAt(middle, "2026-09-02T10:00:00Z");
+        setCreatedAt(newest, "2026-09-03T10:00:00Z");
+
+        Page<Product> products = productService.getProducts(
+                new ProductSearchCondition(null, null, 1, 2)
+        );
+
+        assertThat(products.getContent())
+                .extracting(Product::getId)
+                .containsExactly(oldest.getId());
+        assertThat(products.getTotalElements()).isEqualTo(3);
+        assertThat(products.getTotalPages()).isEqualTo(2);
+        assertThat(products.hasNext()).isFalse();
     }
 
     @Test
@@ -138,5 +221,52 @@ class ProductServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
+    }
+
+    @Test
+    void rejectsNullProductSearchCondition() {
+        assertThatThrownBy(() -> productService.getProducts(null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidProductSearchConditions")
+    void rejectsInvalidProductSearchPage(ProductSearchCondition condition) {
+        assertThatThrownBy(() -> productService.getProducts(condition))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
+    }
+
+    private Member saveSeller() {
+        return memberRepository.save(Member.oauth(OAuthProvider.KAKAO, "list-seller", "목록 판매자"));
+    }
+
+    private Product saveProduct(Member seller, ProductType type, String title) {
+        return productRepository.saveAndFlush(Product.register(
+                seller,
+                type,
+                title,
+                "상품 설명입니다.",
+                50000L
+        ));
+    }
+
+    private void setCreatedAt(Product product, String createdAt) {
+        jdbcTemplate.update(
+                "UPDATE products SET created_at = ? WHERE id = ?",
+                OffsetDateTime.parse(createdAt),
+                product.getId()
+        );
+    }
+
+    private static Stream<ProductSearchCondition> invalidProductSearchConditions() {
+        return Stream.of(
+                new ProductSearchCondition(null, null, -1, 20),
+                new ProductSearchCondition(null, null, 0, 0),
+                new ProductSearchCondition(null, null, 0, 101)
+        );
     }
 }
