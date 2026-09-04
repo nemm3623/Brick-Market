@@ -40,10 +40,25 @@
 |---|---|---|---|---|
 | `POST` | `/api/products` | 필요 | 구현 | 로그인 회원을 판매자로 등록, 요청값 검증 적용 |
 | `GET` | `/api/products/{productId}` | 불필요 | 구현 | 비로그인 사용자도 상품 상세 조회 가능 |
-| `GET` | `/api/products` | 선택 | 계획 | 목록, 검색, 정렬과 페이지네이션 정책 필요 |
+| `GET` | `/api/products` | 불필요 | 구현 | 판매 중 상품 검색과 페이지네이션 |
 | `PATCH` | `/api/products/{productId}` | 필요 | 계획 | 판매자 소유권 검증 필요 |
 | `PATCH` | `/api/products/{productId}/status` | 필요 | 계획 | 허용된 상태 전이 정책 필요 |
 | `DELETE` | `/api/products/{productId}` | 필요 | 계획 | 삭제 또는 숨김 정책 결정 필요 |
+
+## 상품 목록 조회
+
+`GET /api/products`는 `ON_SALE` 상태인 상품을 최신 등록순으로 조회한다.
+
+| Query Parameter | 필수 | 기본값 | 제약 | 설명 |
+|---|---|---|---|---|
+| `type` | 아니요 | 전체 | `USED`, `UNOPENED` | 상품 유형 |
+| `keyword` | 아니요 | 없음 | 최대 100자 | 상품 제목 부분 일치 검색 |
+| `page` | 아니요 | `0` | 0 이상 | 0부터 시작하는 페이지 번호 |
+| `size` | 아니요 | `20` | 1~100 | 페이지당 상품 수 |
+
+정렬은 `createdAt DESC`, `id DESC`로 고정한다. 목록의 각 상품은 `id`, `sellerId`, `type`, `status`, `title`, `price`, `createdAt`을 포함하며 상세 설명은 단건 조회에서 제공한다.
+
+페이지 응답은 `content`, `page`, `size`, `totalElements`, `totalPages`, `hasNext`를 포함한다.
 
 # Favorite API
 
