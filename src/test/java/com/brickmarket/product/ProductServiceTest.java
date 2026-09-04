@@ -12,8 +12,12 @@ import com.brickmarket.product.repository.ProductRepository;
 import com.brickmarket.product.service.ProductRegisterCommand;
 import com.brickmarket.product.service.ProductSearchCondition;
 import com.brickmarket.product.service.ProductService;
+import java.time.OffsetDateTime;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
@@ -91,12 +95,14 @@ class ProductServiceTest {
     }
 
     @Test
-    void getsOnlyOnSaleProductsNewestFirst() throws InterruptedException {
+    void getsOnlyOnSaleProductsNewestFirst() {
         Member seller = saveSeller();
         Product older = saveProduct(seller, ProductType.USED, "오래된 상품");
-        Thread.sleep(10);
         Product newer = saveProduct(seller, ProductType.UNOPENED, "최신 상품");
         Product sold = saveProduct(seller, ProductType.USED, "판매 완료 상품");
+        setCreatedAt(older, "2026-09-01T10:00:00Z");
+        setCreatedAt(newer, "2026-09-02T10:00:00Z");
+        setCreatedAt(sold, "2026-09-03T10:00:00Z");
         jdbcTemplate.update("UPDATE products SET status = 'SOLD' WHERE id = ?", sold.getId());
 
         Page<Product> products = productService.getProducts(
@@ -125,13 +131,29 @@ class ProductServiceTest {
     }
 
     @Test
-    void paginatesProducts() throws InterruptedException {
+    void treatsLikeWildcardAsLiteralKeyword() {
+        Member seller = saveSeller();
+        Product expected = saveProduct(seller, ProductType.USED, "100% 정품 레고");
+        saveProduct(seller, ProductType.USED, "1000 정품 레고");
+
+        Page<Product> products = productService.getProducts(
+                new ProductSearchCondition(null, "%", 0, 20)
+        );
+
+        assertThat(products.getContent())
+                .extracting(Product::getId)
+                .containsExactly(expected.getId());
+    }
+
+    @Test
+    void paginatesProducts() {
         Member seller = saveSeller();
         Product oldest = saveProduct(seller, ProductType.USED, "첫 번째 상품");
-        Thread.sleep(10);
-        saveProduct(seller, ProductType.USED, "두 번째 상품");
-        Thread.sleep(10);
-        saveProduct(seller, ProductType.USED, "세 번째 상품");
+        Product middle = saveProduct(seller, ProductType.USED, "두 번째 상품");
+        Product newest = saveProduct(seller, ProductType.USED, "세 번째 상품");
+        setCreatedAt(oldest, "2026-09-01T10:00:00Z");
+        setCreatedAt(middle, "2026-09-02T10:00:00Z");
+        setCreatedAt(newest, "2026-09-03T10:00:00Z");
 
         Page<Product> products = productService.getProducts(
                 new ProductSearchCondition(null, null, 1, 2)
@@ -201,6 +223,23 @@ class ProductServiceTest {
                 .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
     }
 
+    @Test
+    void rejectsNullProductSearchCondition() {
+        assertThatThrownBy(() -> productService.getProducts(null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidProductSearchConditions")
+    void rejectsInvalidProductSearchPage(ProductSearchCondition condition) {
+        assertThatThrownBy(() -> productService.getProducts(condition))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PRODUCT_INFO);
+    }
+
     private Member saveSeller() {
         return memberRepository.save(Member.oauth(OAuthProvider.KAKAO, "list-seller", "목록 판매자"));
     }
@@ -213,5 +252,21 @@ class ProductServiceTest {
                 "상품 설명입니다.",
                 50000L
         ));
+    }
+
+    private void setCreatedAt(Product product, String createdAt) {
+        jdbcTemplate.update(
+                "UPDATE products SET created_at = ? WHERE id = ?",
+                OffsetDateTime.parse(createdAt),
+                product.getId()
+        );
+    }
+
+    private static Stream<ProductSearchCondition> invalidProductSearchConditions() {
+        return Stream.of(
+                new ProductSearchCondition(null, null, -1, 20),
+                new ProductSearchCondition(null, null, 0, 0),
+                new ProductSearchCondition(null, null, 0, 101)
+        );
     }
 }
